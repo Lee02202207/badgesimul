@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>메이플 창세의뱃지 강화 시뮬레이터 (with 이미지)</title>
+    <style>
+        * { box-sizing: border-box; font-family: 'Segoe UI', Roboto, system-ui, sans-serif; }
+        body { background: #0e1a2b; display: flex; justify-content: center; padding: 20px; margin: 0; }
+        .container { max-width: 1200px; width: 100%; background: #f3f6fc; border-radius: 32px; padding: 24px; box-shadow: 0 20px 40px rgba(0,0,0,0.6); border: 2px solid #b69e6b; }
+        h1 { display: flex; align-items: center; gap: 12px; color: #1f3a5f; margin: 0 0 10px; font-weight: 600; }
+        h1 span { background: #d4b98c; color: #1d2b3f; font-size: 1.1rem; padding: 6px 16px; border-radius: 40px; font-weight: 500; }
+        .badge-icon { font-size: 2.4rem; filter: drop-shadow(2px 4px 4px rgba(0,0,0,0.3)); }
+        .stats-panel { background: #ffffffd9; backdrop-filter: blur(4px); border-radius: 28px; padding: 20px; border: 2px solid #c9ad7a; box-shadow: inset 0 2px 6px #ffeecc, 0 8px 12px #00000020; margin-bottom: 24px; }
+        .flex-row { display: flex; flex-wrap: wrap; gap: 24px; align-items: center; justify-content: space-between; }
+        .price-tag { background: #374a6b; color: #ffdba5; padding: 8px 18px; border-radius: 40px; font-weight: 700; font-size: 1.2rem; border: 1px solid #ebc47f; }
+        .button-group { display: flex; gap: 10px; flex-wrap: wrap; }
+        button { background: #2f4b7c; border: none; color: white; font-weight: 600; padding: 12px 26px; border-radius: 60px; font-size: 1.1rem; cursor: pointer; transition: 0.15s; box-shadow: 0 6px 0 #10233e, 0 4px 12px black; border: 1px solid #a78e5f; }
+        button:hover { background: #3d5f99; transform: translateY(-2px); box-shadow: 0 8px 0 #10233e, 0 6px 14px black; }
+        button:active { transform: translateY(4px); box-shadow: 0 2px 0 #10233e; }
+        button.auto { background: #5f3f2c; box-shadow: 0 6px 0 #362315; }
+        .sim-area { display: flex; flex-direction: column; gap: 20px; margin-top: 30px; }
+        .canvas-container { background: #fbf7f0; border-radius: 32px; padding: 20px; border: 3px solid #ba9f6a; box-shadow: inset 0 0 0 2px #efe3cf; }
+        .graph-row { display: flex; gap: 18px; flex-wrap: wrap; }
+        .graph-box { flex: 2; min-width: 330px; background: #eae3d5; border-radius: 24px; padding: 14px; border: 1px solid #b29a64; }
+        .stats-box { flex: 1; min-width: 220px; background: #1e3148; border-radius: 24px; padding: 18px; color: #f5e6d3; border: 2px solid #cbb077; }
+        .stat-item { font-size: 1.2rem; margin: 18px 0; border-bottom: 1px dashed #7f8fa0; padding-bottom: 8px; }
+        .percent-badge { background: #e1c16e; color: #1a2b3c; font-weight: 700; padding: 8px 16px; border-radius: 50px; font-size: 1.5rem; display: inline-block; margin-top: 6px; }
+        .material-log { background: #121f2f; border-radius: 22px; padding: 16px; color: #c0d3ec; font-size: 1.1rem; border: 2px solid #b2945a; margin-top: 16px; max-height: 150px; overflow-y: auto; }
+        .log-entry { color: #c6e2ff; font-family: 'Courier New', monospace; padding: 2px 0; }
+        .warning { color: #ffb3b3; font-size: 0.95rem; margin-left: 10px; }
+        canvas { width: 100%; height: auto; background: #fefcf8; border-radius: 20px; display: block; border: 2px solid #ad8f57; }
+        .flex-between { display: flex; justify-content: space-between; align-items: center; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>
+        <span class="badge-icon">🪶</span> 
+        창세의뱃지 강화 시뮬레이터 
+        <span>v1.0</span>
+    </h1>
+    <div class="stats-panel">
+        <div class="flex-row">
+            <div class="price-tag"> 재료 1개 · 6,000 원</div>
+            <div class="button-group">
+                <button id="manualBtn">🖐️ 수동 강화 (1회)</button>
+                <button id="autoOnceBtn" class="auto">⚡ 자동 10회</button>
+                <button id="autoHundoBtn" class="auto">🚀 자동 100회</button>
+                <button id="resetBtn">🔄 리셋</button>
+            </div>
+        </div>
+        <div class="flex-between" style="margin-top:12px">
+            <div><strong>현재 강화:</strong> <span id="currentStepDisplay" style="font-size:1.8rem;font-weight:700;">0</span> 단계</div>
+            <div><strong>사용 재료:</strong> <span id="usedMatDisplay" style="font-size:1.8rem;font-weight:700;">0</span> 개</div>
+            <div><strong>총 비용:</strong> <span id="costDisplay">0</span> 메소</div>
+        </div>
+    </div>
+
+    <!-- 그래프 + 통계 -->
+    <div class="graph-row">
+        <div class="graph-box">
+            <div style="font-weight:700; margin-bottom:8px;">📈 강화별 재료 소모 기댓값 (흰 막대) vs 내 기록 (초록 선)</div>
+            <div class="canvas-container">
+                <canvas id="mainChart" width="600" height="280"></canvas>
+            </div>
+            <div style="display:flex; gap:20px; margin-top:10px; flex-wrap:wrap;">
+                <div><span style="background:#4472c4; color:white; padding:2px 10px; border-radius:12px;">기댓값</span> (만렙까지 평균 재료)</div>
+                <div><span style="background:#2e7d32; color:white; padding:2px 10px; border-radius:12px;">내 강화 기록</span> (누적 재료)</div>
+            </div>
+        </div>
+        <div class="stats-box">
+            <div class="stat-item">지금 내 운</div>
+            <div style="font-size: 2.8rem; font-weight:800;" id="percentRank">-</div>
+            <div style="margin: 5px 0 15px;">상위 <span id="percentRankText">0</span>% (운이 좋은 순서)</div>
+            <div class="stat-item">🧾 누적 재료</div>
+            <div style="font-size:2.2rem;"><span id="myMatForGraph">0</span> 개</div>
+            <div class="stat-item">💰 지출 현금</div>
+            <div style="font-size:1.7rem;"><span id="myCostForGraph">0</span> 메소</div>
+        </div>
+    </div>
+
+    <!-- 재료 사용 내역 (로그) -->
+    <div class="material-log" id="logPanel">
+        <div style="display:flex; gap:10px; align-items:center; margin-bottom:8px;">📋 사용 기록 <span class="warning">(최근 10개)</span></div>
+        <div id="logMessages">[시스템] 강화를 시작합니다.</div>
+    </div>
+</div>
+
+<script>
+(function() {
+    // ---------- 강화 확률 (단계별) ----------
+    // 인덱스 0: 0->1, 1:1->2, 2:2->3, 3:3->4, 4:4->5, 5:5->6, 6:6->7, 7:7->8, 8:8->9, 9:9->10
+    const PROB = [0.70, 0.45, 0.25, 0.15, 0.10, 0.07, 0.05, 0.03, 0.02, 0.01]; // 9->10 = 1%
+    const MAX_STEP = 10; // 0~10 (0단계부터 시작, 10이 목표)
+    const MATERIAL_COST = 6000;
+
+    // 현재 상태
+    let currentStep = 0;            // 0 ~ 10
+    let usedMaterials = 0;          // 시도 횟수 = 사용 재료 수 (성공/실패 모두 재료 1개 소모)
+    let historyPerStep = new Array(MAX_STEP + 1).fill(0); // 각 단계에 도달했을 때의 누적 재료 수 (기록용)
+    let logEntries = [];
+
+    // 초기화: 0단계일 때 historyPerStep[0] = 0;
+    function resetState() {
+        currentStep = 0;
+        usedMaterials = 0;
+        historyPerStep = new Array(MAX_STEP + 1).fill(0);
+        historyPerStep[0] = 0; // 시작 단계 기록
+        logEntries = ['[시스템] 강화가 초기화되었습니다.'];
+        updateUI();
+        updateChart();
+    }
+
+    // 단계 업데이트시 history 기록 (현재 단계에 사용재료 수를 저장)
+    function recordHistoryForCurrentStep() {
+        if (currentStep <= MAX_STEP) {
+            // 만약 이미 기록된 값보다 작으면? (다시 돌아올 수 없음, 강화는 증가만. 하지만 초기화 제외)
+            // 안전하게 항상 현재 usedMaterials로 갱신 (단계가 올라갈때 저장)
+            historyPerStep[currentStep] = usedMaterials;
+        }
+    }
+
+    // 강화 1회 시도 (성공/실패 처리)
+    function attemptEnhance() {
+        if (currentStep >= MAX_STEP) {
+            logEntries.unshift(' 이미 10강입니다!');
+            if (logEntries.length > 10) logEntries.pop();
+            updateUI();
+            return false; // 더이상 진행 불가
+        }
+
+        // 재료 소모 증가 (시도 자체에 재료 사용)
+        usedMaterials += 1;
+
+        const stepIdx = currentStep;      // 0~9
+        const prob = PROB[stepIdx];
+        const rand = Math.random();
+        const success = rand < prob;
+
+        let logMsg = `[단계 ${currentStep}→${currentStep+1}] ${(prob*100).toFixed(1)}% 도전: ${success ? '성공' : '실패'}`;
+        
+        if (success) {
+            currentStep++;
+            recordHistoryForCurrentStep(); // 새 단계 도달 시점에 누적 재료 기록
+            logMsg += ` → 현재 ${currentStep}단계`;
+        } else {
+            // 실패 : 단계 하락 없음 (창세의뱃지는 하락 패널티 없음, 조건 없음)
+            logMsg += ` → 현재 ${currentStep}단계 (유지)`;
+        }
+
+        // 기록 저장 (최근 10개)
+        logEntries.unshift(logMsg);
+        if (logEntries.length > 10) logEntries.pop();
+
+        updateUI();
+        updateChart();  // 그래프 업데이트
+        return true;
+    }
+
+    // ---------- 기댓값 계산 (각 단계까지 도달하는데 필요한 평균 재료 개수) ----------
+    // 마코프 체인 근사: 성공확률 p_i = PROB[i]. 목표 단계까지 재료 기대값.
+    // 단계 i에서 i+1로 가는데 평균 시도횟수 1/p_i, 각 시도마다 재료 1 소모.
+    // 따라서 0→k까지 기대 재료 = sum_{i=0}^{k-1} (1/p_i)  (단, p_i>0)
+    function computeExpectedMaterials() {
+        let expected = [0]; // 0단계까지 0개
+        for (let step = 1; step <= MAX_STEP; step++) {
+            let sum = 0;
+            for (let i = 0; i < step; i++) {
+                if (PROB[i] > 0) sum += 1 / PROB[i];
+                else sum += Infinity; // 발생하지 않음
+            }
+            expected[step] = sum;
+        }
+        return expected; // 길이 11 (0~10)
+    }
+
+    // ---------- 내가 방금한 기록을 바탕으로 현재 단계까지의 "사용 재료"를 보여줌, historyPerStep 사용
+    function getMyCumulativeHistory() {
+        let hist = new Array(MAX_STEP + 1).fill(null);
+        for (let i = 0; i <= currentStep; i++) {
+            hist[i] = historyPerStep[i] !== undefined ? historyPerStep[i] : null;
+        }
+        return hist; // null인 부분은 아직 도달 안 함
+    }
+
+    // ---------- 퍼센트 랭킹 (운) : 내가 사용한 재료(usedMaterials)가 같은 단계까지 도달하는데 소모된 재료 분포에서 몇 %인지 (단순 모의실험으로 10만번)
+    function computeLuckPercent() {
+        if (currentStep === 0) return 50; // 기본
+        if (currentStep >= MAX_STEP && usedMaterials === 0) return 0; 
+        const targetStep = currentStep;
+        const myCost = usedMaterials;
+
+        // 몬테카를로 시뮬레이션 20000회
+        const SIM = 50000;
+        let betterCount = 0; // 나보다 적게 쓴 사람 = 운 좋은 사람 (하위값)
+        for (let sim = 0; sim < SIM; sim++) {
+            let step = 0;
+            let matUsed = 0;
+            while (step < targetStep) {
+                let p = PROB[step];
+                matUsed++;
+                if (Math.random() < p) {
+                    step++;
+                }
+            }
+            if (matUsed <= myCost) betterCount++; // 나와 같거나 더 적게 쓴 경우 (운 좋음)
+        }
+        let percentile = (betterCount / SIM) * 100; // 0~100 , 100에 가까울수록 내가 상위(운좋음)
+        return Math.min(99.9, Math.max(0.1, percentile));
+    }
+
+    // 그래프 렌더링
+    let chartCanvas = document.getElementById('mainChart');
+    let ctx = chartCanvas.getContext('2d');
+
+    function updateChart() {
+        ctx.clearRect(0, 0, chartCanvas.width, chartCanvas.height);
+        const w = chartCanvas.width, h = chartCanvas.height;
+        const padding = 45;
+        const graphW = w - 2 * padding;
+        const graphH = h - 2 * padding - 10;
+
+        // X축: 0~10 단계
+        const expected = computeExpectedMaterials(); // 기댓값 배열
+
+        // 내 기록 (최근)
+        const myHist = getMyCumulativeHistory(); // null or number
+
+        // 최대값 구하기 (y축 스케일)
+        let maxVal = 50; // 최소 50
+        for (let i = 0; i <= MAX_STEP; i++) {
+            if (expected[i] > maxVal) maxVal = expected[i];
+            if (myHist[i] !== null && myHist[i] > maxVal) maxVal = myHist[i];
+        }
+        maxVal = Math.ceil(maxVal * 1.2); // 여유
+
+        // 배경
+        ctx.fillStyle = '#fefcf8';
+        ctx.fillRect(0, 0, w, h);
+
+        // 축 그리기
+        ctx.beginPath();
+        ctx.strokeStyle = '#988c6f';
+        ctx.lineWidth = 1.5;
+        // y축
+        ctx.moveTo(padding, padding);
+        ctx.lineTo(padding, h - padding);
+        // x축
+        ctx.moveTo(padding, h - padding);
+        ctx.lineTo(w - padding, h - padding);
+        ctx.stroke();
+
+        // x축 레이블
+        ctx.fillStyle = '#3b2e1e';
+        ctx.font = 'bold 11px monospace';
+        for (let i = 0; i <= MAX_STEP; i++) {
+            let x = padding + (i / MAX_STEP) * graphW;
+            ctx.fillText(i, x-5, h - padding + 18);
+        }
+        // y축 레이블 (몇개)
+        for (let i = 0; i <= 5; i++) {
+            let val = Math.round((i/5) * maxVal);
+            let y = h - padding - (i/5) * graphH;
+            ctx.fillText(val, 5, y+4);
+        }
+
+        // 기댓값 막대 (흰색 바탕에 파랑)
+        const barWidth = graphW / (MAX_STEP * 2.5); 
+        for (let i = 0; i <= MAX_STEP; i++) {
+            let x = padding + (i / MAX_STEP) * graphW - barWidth/2;
+            let barHeight = (expected[i] / maxVal) * graphH;
+            ctx.fillStyle = '#4472c4';
+            ctx.fillRect(x, h - padding - barHeight, barWidth, barHeight);
+            // 값 표시 (작게)
+            ctx.fillStyle = '#10233e';
+            ctx.font = 'bold 9px monospace';
+            ctx.fillText(Math.round(expected[i]), x, h - padding - barHeight - 4);
+        }
+
+        // 내 기록 (초록색 선 + 점)
+        ctx.beginPath();
+        ctx.strokeStyle = '#2e7d32';
+        ctx.lineWidth = 4;
+        ctx.setLineDash([]);
+        let first = true;
+        for (let i = 0; i <= currentStep; i++) {
+            if (myHist[i] !== null) {
+                let x = padding + (i / MAX_STEP) * graphW;
+                let y = h - padding - (myHist[i] / maxVal) * graphH;
+                if (first) {
+                    ctx.moveTo(x, y);
+                    first = false;
+                } else {
+                    ctx.lineTo(x, y);
+                }
+                // 점
+                ctx.fillStyle = '#1b5e20';
+                ctx.beginPath();
+                ctx.arc(x, y, 5, 0, 2*Math.PI);
+                ctx.fill();
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+            }
+        }
+        ctx.strokeStyle = '#2e7d32';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+    }
+
+    // UI 텍스트 업데이트
+    function updateUI() {
+        document.getElementById('currentStepDisplay').innerText = currentStep;
+        document.getElementById('usedMatDisplay').innerText = usedMaterials;
+        document.getElementById('costDisplay').innerText = (usedMaterials * MATERIAL_COST).toLocaleString();
+
+        // 내 기록용
+        document.getElementById('myMatForGraph').innerText = usedMaterials;
+        document.getElementById('myCostForGraph').innerText = (usedMaterials * MATERIAL_COST).toLocaleString();
+
+        // 퍼센트 랭킹 계산
+        let pct = computeLuckPercent();
+        document.getElementById('percentRank').innerText = (pct).toFixed(2) + '%';
+        document.getElementById('percentRankText').innerText = (pct).toFixed(2);
+
+        // 로그 패널 업데이트
+        let logDiv = document.getElementById('logMessages');
+        logDiv.innerHTML = logEntries.map(msg => `<div class="log-entry">${msg}</div>`).join('');
+    }
+
+    // 자동 n회
+    function autoEnhance(times) {
+        for (let i = 0; i < times; i++) {
+            if (currentStep >= MAX_STEP) {
+                logEntries.unshift('⛔ 만렙 도달, 자동 중단');
+                if (logEntries.length > 10) logEntries.pop();
+                break;
+            }
+            attemptEnhance();
+        }
+        updateUI();
+        updateChart();
+    }
+
+    // 이벤트 연결
+    document.getElementById('manualBtn').addEventListener('click', () => {
+        attemptEnhance();
+    });
+    document.getElementById('autoOnceBtn').addEventListener('click', () => {
+        autoEnhance(10);
+    });
+    document.getElementById('autoHundoBtn').addEventListener('click', () => {
+        autoEnhance(100);
+    });
+    document.getElementById('resetBtn').addEventListener('click', () => {
+        resetState();
+    });
+
+    // 초기화 및 최초 그래프
+    resetState();
+
+    // 추가: 초기 history 기록
+    recordHistoryForCurrentStep();
+
+    // 추가 이미지? 간단히 이모지로 대체 (창세의뱃지 이미지 느낌)
+    // 필요시 base64 이미지 추가 가능하나, 이모지로 만족
+})();
+</script>
+
+<!-- 추가 설명: 이미지 첨부 대신 아이콘 이모지 사용, 확률 100% 반영 -->
+</body>
+</html>
